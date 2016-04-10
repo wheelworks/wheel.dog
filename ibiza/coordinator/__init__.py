@@ -9,10 +9,6 @@ import ibiza.watcher
 import ibiza.coordinator.web
 
 
-async def handle(request):
-    return web.Response(body='hello'.encode('utf-8'))
-
-
 def terminate(watch_task):
     print('Terminating')
 
