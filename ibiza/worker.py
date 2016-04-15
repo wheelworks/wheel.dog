@@ -19,6 +19,14 @@ async def work(coordinator):
     semaphore = aio.BoundedSemaphore(4)
     worklets = []
 
+    task = aio.Task.current_task()
+
+    def done_callback(_):
+        for worklet_task in worklets:
+            worklet_task.cancel()
+
+    task.add_done_callback(done_callback)
+
     def worklet_done(future):
         worklets.remove(future)
         semaphore.release()
@@ -27,21 +35,24 @@ async def work(coordinator):
         if semaphore.locked():
             print('We are full')
 
-        try:
-            await semaphore.acquire()
-        except aio.CancelledError:
-            for worklet_task in worklets:
-                worklet_task.cancel()
-            break
+        await semaphore.acquire()
+        semaphore.release()
 
         try:
+            print('Waiting for a next task')
             async with coordinator.get('http://localhost:8080/tasks/next') as response:
                 sleep = int((await response.json())['sleep'])
-        except aio.CancelledError:
-            for worklet_task in worklets:
-                worklet_task.cancel()
-            break
+            print('Got task')
+        except aiohttp.ClientConnectionError:
+            print('Coordinator connection error, retrying in 3 seconds')
+            await aio.sleep(3)
+            continue
+        except aiohttp.ClientResponseError:
+            print('Coordinator disconnected')
+            continue
 
+        # this cannot block
+        await semaphore.acquire()
         worklet_task = aio.ensure_future(worklet(sleep))
 
         worklet_task.add_done_callback(worklet_done)
@@ -80,7 +91,10 @@ def main():
 
     print('Started PID', os.getpid())
 
-    loop.run_until_complete(aio.wait([work_task, watch_task]))
+    try:
+        loop.run_until_complete(aio.gather(work_task, watch_task))
+    except aio.CancelledError:
+        pass
 
     loop.run_until_complete(coordinator.close())
 
