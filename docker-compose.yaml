@@ -1,0 +1,15 @@
+version: '2'
+
+services:
+  coordinator:
+    build: .
+    command: python ibiza/supervisor.py ibiza/coordinator/__init__.py
+    ports:
+      - 8080:8080
+    volumes:
+      - ./ibiza:/usr/app/src/ibiza:ro
+  worker:
+    build: .
+    command: python ibiza/supervisor.py ibiza/worker.py
+    volumes:
+      - ./ibiza:/usr/app/src/ibiza:ro

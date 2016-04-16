@@ -40,7 +40,7 @@ async def work(coordinator):
 
         try:
             print('Waiting for a next task')
-            async with coordinator.get('http://localhost:8080/tasks/next') as response:
+            async with coordinator.get('http://coordinator:8080/tasks/next') as response:
                 sleep = int((await response.json())['sleep'])
             print('Got task')
         except aiohttp.ClientConnectionError:
