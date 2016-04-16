@@ -16,7 +16,12 @@ def terminate(run_task):
     run_task.cancel()
 
 
-async def run():
+def signal_child_reloading(child_reloading):
+    print('Child will be terminating to reload')
+    child_reloading.set()
+
+
+async def run(child_reloading):
     while 1:
         child = await aio.create_subprocess_exec(sys.executable, *sys.argv[1:])
 
@@ -24,7 +29,12 @@ async def run():
 
         try:
             retcode = await child.wait()
-            print('Child unexpectadly exited with', retcode)
+
+            if child_reloading.is_set():
+                print('Child exited for reloading')
+                child_reloading.clear()
+            else:
+                print('Child unexpectadly exited with', retcode)
         except aio.CancelledError:
             print('Sending TERM to child')
             child.terminate()
@@ -41,9 +51,12 @@ async def run():
 
 def main():
     loop = aio.get_event_loop()
-    run_task = aio.ensure_future(run())
+    child_reloading = aio.Event()
+    run_task = aio.ensure_future(run(child_reloading))
+
     loop.add_signal_handler(signal.SIGTERM, terminate, run_task)
     loop.add_signal_handler(signal.SIGHUP, reload, run_task)
+    loop.add_signal_handler(signal.SIGUSR1, signal_child_reloading, child_reloading)
 
     print('Started supervisor', os.getpid())
 

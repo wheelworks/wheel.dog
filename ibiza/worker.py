@@ -72,6 +72,8 @@ async def watch(work_task):
 
         await aio.sleep(1)
 
+    os.kill(os.getppid(), signal.SIGUSR1)
+
 
 def terminate(tasks):
     print('Terminating')

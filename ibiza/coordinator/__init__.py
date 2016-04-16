@@ -25,10 +25,9 @@ async def watch():
             print('Files changed', paths)
             break
 
-        try:
-            await aio.sleep(1)
-        except aio.CancelledError:
-            break
+        await aio.sleep(1)
+
+    os.kill(os.getppid(), signal.SIGUSR1)
 
 
 def add_json_route(router, method, path, handler):
@@ -56,7 +55,10 @@ def main():
 
     print('Started PID', os.getpid())
 
-    loop.run_until_complete(watch_task)
+    try:
+        loop.run_until_complete(watch_task)
+    except aio.CancelledError:
+        pass
 
     srv.close()
     loop.run_until_complete(srv.wait_closed())
