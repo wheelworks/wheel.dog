@@ -13,3 +13,9 @@ services:
     command: python ibiza/supervisor.py ibiza/worker.py
     volumes:
       - ./ibiza:/usr/app/src/ibiza:ro
+  executor:
+    build: .
+    command: python ibiza/executor.py
+    volumes:
+      - ./ibiza:/usr/app/src/ibiza:ro
+      - /var/run/docker.sock:/var/run/docker.sock
